@@ -1,0 +1,55 @@
+CREATE TRIGGER `after_sales_insert_aggregration` AFTER INSERT ON `sales`
+ FOR EACH ROW BEGIN
+    DECLARE daily_start DATE;
+    DECLARE daily_end DATE;
+    
+    DECLARE weekly_start DATE;
+    DECLARE weekly_end DATE;
+    
+    DECLARE monthly_start DATE;
+    DECLARE monthly_end DATE;
+
+    -- Compute period boundaries
+    SET daily_start = DATE(NEW.SalesDate);
+    SET daily_end = daily_start;
+
+    SET weekly_start = DATE_SUB(NEW.SalesDate, INTERVAL WEEKDAY(NEW.SalesDate) DAY);
+    SET weekly_end = DATE_ADD(weekly_start, INTERVAL 6 DAY);
+
+    SET monthly_start = DATE_FORMAT(NEW.SalesDate, '%Y-%m-01');
+    SET monthly_end = LAST_DAY(NEW.SalesDate);
+
+    -- DAILY AGGREGATION
+    INSERT INTO salesaggregration (
+        PeriodType, PeriodStart, PeriodEnd, Product_ID, TotalSales, TotalQuantity
+    )
+    VALUES (
+        'daily', daily_start, daily_end, NEW.Product_ID, NEW.TotalPrice, NEW.Quantity
+    )
+    ON DUPLICATE KEY UPDATE
+        TotalSales = TotalSales + NEW.TotalPrice,
+        TotalQuantity = TotalQuantity + NEW.Quantity;
+
+    -- WEEKLY AGGREGATION
+    INSERT INTO salesaggregration (
+        PeriodType, PeriodStart, PeriodEnd, Product_ID, TotalSales, TotalQuantity
+    )
+    VALUES (
+        'weekly', weekly_start, weekly_end, NEW.Product_ID, NEW.TotalPrice, NEW.Quantity
+    )
+    ON DUPLICATE KEY UPDATE
+        TotalSales = TotalSales + NEW.TotalPrice,
+        TotalQuantity = TotalQuantity + NEW.Quantity;
+
+    -- MONTHLY AGGREGATION
+    INSERT INTO salesaggregration (
+        PeriodType, PeriodStart, PeriodEnd, Product_ID, TotalSales, TotalQuantity
+    )
+    VALUES (
+        'monthly', monthly_start, monthly_end, NEW.Product_ID, NEW.TotalPrice, NEW.Quantity
+    )
+    ON DUPLICATE KEY UPDATE
+        TotalSales = TotalSales + NEW.TotalPrice,
+        TotalQuantity = TotalQuantity + NEW.Quantity;
+
+END

@@ -1,0 +1,25 @@
+CREATE TRIGGER `after_sales_insert_inventory` AFTER INSERT ON `sales`
+ FOR EACH ROW BEGIN
+    DECLARE new_inventory INT;
+    DECLARE new_status VARCHAR(20);
+
+    -- Calculate new inventory
+    SELECT Inventory - NEW.Quantity INTO new_inventory
+    FROM inventory
+    WHERE Product_ID = NEW.Product_ID;
+
+    -- Determine the new status
+    SET new_status = CASE 
+        WHEN new_inventory > 10 THEN 'IN-STOCK'
+        WHEN new_inventory > 0 THEN 'LOW-STOCK'
+        ELSE 'OUT-OF-STOCK'
+    END;
+
+    -- Update the inventory
+    UPDATE inventory
+    SET 
+        Inventory = new_inventory,
+        UnitOut = NEW.SalesDate,
+        Status = new_status
+    WHERE Product_ID = NEW.Product_ID;
+END
